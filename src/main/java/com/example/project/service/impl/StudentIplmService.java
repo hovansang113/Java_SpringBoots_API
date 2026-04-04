@@ -4,11 +4,14 @@ import com.example.project.dto.request.StudentRequest;
 import com.example.project.dto.response.StudentDTO;
 import com.example.project.entity.ClassEntity;
 import com.example.project.entity.Parent;
+import com.example.project.entity.ReportCard;
 import com.example.project.entity.Student;
 import com.example.project.exception.ResourceNotFoundException;
 import com.example.project.repository.ClassEntityRepository;
 import com.example.project.repository.ParentRepository;
+import com.example.project.repository.ReportCardRepository;
 import com.example.project.repository.StudentRepository;
+import com.example.project.repository.SubjectRepository;
 import com.example.project.service.StudentService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,13 +25,19 @@ public class StudentIplmService implements StudentService {
     private final StudentRepository studentRepository;
     private final ParentRepository parentRepository;
     private final ClassEntityRepository classEntityRepository;
+    private final SubjectRepository subjectRepository;
+    private final ReportCardRepository reportCardRepository;
 
     public StudentIplmService(StudentRepository studentRepository,
                                ParentRepository parentRepository,
-                               ClassEntityRepository classEntityRepository) {
+                               ClassEntityRepository classEntityRepository,
+                               SubjectRepository subjectRepository,
+                               ReportCardRepository reportCardRepository) {
         this.studentRepository = studentRepository;
         this.parentRepository = parentRepository;
         this.classEntityRepository = classEntityRepository;
+        this.subjectRepository = subjectRepository;
+        this.reportCardRepository = reportCardRepository;
     }
 
     @Override
@@ -62,6 +71,20 @@ public class StudentIplmService implements StudentService {
         }
 
         Student saved = studentRepository.save(student);
+
+        // Tự động tạo ReportCard cho tất cả môn học
+        if (request.getSchoolYear() != null && request.getSemester() != null) {
+            subjectRepository.findAll().forEach(subject -> {
+                ReportCard reportCard = new ReportCard();
+                reportCard.setStudent(saved);
+                reportCard.setSubject(subject);
+                reportCard.setSchoolYear(request.getSchoolYear());
+                reportCard.setSemester(request.getSemester());
+                reportCard.setScore(null);
+                reportCardRepository.save(reportCard);
+            });
+        }
+
         return studentRepository.findWithDetailsById(saved.getId())
                 .map(StudentDTO::new)
                 .orElseThrow(() -> new ResourceNotFoundException("Lỗi khi load student sau khi save"));

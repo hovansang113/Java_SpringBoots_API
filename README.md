@@ -26,11 +26,56 @@ com.example.project/
 │   └── response/       → Trả dữ liệu về client
 ├── entity/             → Các entity ánh xạ với DB
 ├── exception/          → Xử lý ngoại lệ toàn cục
-├── repository/         → Truy vấn DB
+├── repository/         → Truy vấn DB với JOIN FETCH
 ├── service/
 │   ├── impl/           → Triển khai logic nghiệp vụ
 │   └── *.java          → Interface service
 └── ProjectApplication.java
+```
+
+---
+
+## Mô Hình Cơ Sở Dữ Liệu
+
+### Các Entity
+
+| Entity | Bảng | Mô tả |
+|--------|------|-------|
+| School | school | Trường học (THCS / THPT) |
+| ClassEntity | class | Lớp học thuộc trường |
+| Employee | employee | Nhân viên / Giáo viên |
+| Student | student | Học sinh |
+| Parent | parent | Phụ huynh |
+| Subject | subject | Môn học |
+| AcademicRecord | academic_record | Sổ học bạ |
+| ReportCard | report_card | Bảng điểm tổng kết |
+| ScoreDetail | score_detail | Phiếu điểm từng bài kiểm tra |
+| LessonLog | lesson_log | Sổ đầu bài |
+| StudentCard | student_card | Thẻ học sinh |
+| Account | account | Tài khoản đăng nhập |
+| Role | role | Vai trò người dùng |
+| AccountRole | account_role | Liên kết tài khoản - vai trò |
+
+### Quan Hệ Giữa Các Entity
+
+```
+School (1) ──── (n) ClassEntity
+School (1) ──── (n) Employee
+School (1) ──── (n) Subject
+ClassEntity (1) ──── (n) Student
+ClassEntity (1) ──── (n) LessonLog
+Employee (n) ──── (1) Subject  (1 giáo viên chỉ dạy 1 môn, 1 môn có nhiều giáo viên)
+Employee (1) ──── (n) LessonLog
+Employee (1) ──── (n) ClassEntity (giáo viên chủ nhiệm)
+Student (n) ──── (1) Parent
+Student (1) ──── (1) StudentCard
+Student (1) ──── (n) AcademicRecord
+Student (1) ──── (n) ReportCard
+Student (1) ──── (n) ScoreDetail
+Subject (1) ──── (n) ReportCard
+Subject (1) ──── (n) ScoreDetail
+Account (1) ──── (1) Employee / Student / Parent
+Account (n) ──── (n) Role  [qua bảng account_role]
 ```
 
 ---
@@ -51,7 +96,7 @@ Service xử lý logic nghiệp vụ
   - Map Entity → Response DTO
         ↓
 Repository truy vấn DB
-  - JOIN FETCH load đầy đủ quan hệ
+  - JOIN FETCH load đầy đủ quan hệ (tránh N+1)
   - Trả về Entity
         ↓
 Controller trả về ApiResponse
@@ -105,17 +150,17 @@ Trả về ApiResponse(status, message, null)
 Client nhận response lỗi
 ```
 
-### Flow Save Student
+### Flow Save Student (có tự động tạo ReportCard)
 ```
 POST /api/students
-        ↓
-StudentController.save(@RequestBody StudentRequest)
         ↓
 StudentIplmService.save(request)
   - Tạo Student entity mới
   - Tìm Parent theo parentId → gán vào student
   - Tìm ClassEntity theo classId → gán vào student
   - Lưu student xuống DB
+  - Tự động tạo ReportCard cho tất cả môn học
+    (nếu request có schoolYear và semester)
   - Reload student với JOIN FETCH
         ↓
 Trả về StudentDTO (có thông tin parent, class, school)
@@ -124,8 +169,6 @@ Trả về StudentDTO (có thông tin parent, class, school)
 ### Flow Save Parent
 ```
 POST /api/parents
-        ↓
-ParentController.save(@RequestBody ParentRequest)
         ↓
 ParentIplmService.save(request)
   - Tạo Parent entity mới
@@ -152,8 +195,6 @@ Trả về ApiResponse(200, "Success", null)
 ```
 PUT /api/parents/{id}
         ↓
-ParentController.updateById(@PathVariable id, @RequestBody ParentRequest)
-        ↓
 ParentIplmService.updateById(id, request)
   - Tìm parent theo id → không tìm thấy → throw ResourceNotFoundException
   - Cập nhật thông tin: fullName, phone, email, address, relationship
@@ -165,47 +206,103 @@ ParentIplmService.updateById(id, request)
 Trả về ParentDTO (có danh sách students mới)
 ```
 
----
-
-## Mô Hình Cơ Sở Dữ Liệu
-
-### Các Entity
-
-| Entity | Bảng | Mô tả |
-|--------|------|-------|
-| School | school | Trường học (THCS / THPT) |
-| ClassEntity | class | Lớp học thuộc trường |
-| Employee | employee | Nhân viên / Giáo viên |
-| Student | student | Học sinh |
-| Parent | parent | Phụ huynh |
-| Subject | subject | Môn học |
-| AcademicRecord | academic_record | Sổ học bạ |
-| ReportCard | report_card | Bảng điểm |
-| ScoreDetail | score_detail | Phiếu điểm |
-| LessonLog | lesson_log | Sổ đầu bài |
-| StudentCard | student_card | Thẻ học sinh |
-| Account | account | Tài khoản đăng nhập |
-| Role | role | Vai trò người dùng |
-| AccountRole | account_role | Liên kết tài khoản - vai trò |
-
-### Quan Hệ Giữa Các Entity
-
+### Flow Save Subject
 ```
-School (1) ──── (n) ClassEntity
-School (1) ──── (n) Employee
-ClassEntity (1) ──── (n) Student
-ClassEntity (1) ──── (n) LessonLog
-Employee (n) ──── (1) Subject (giáo viên phụ trách môn)
-Employee (1) ──── (n) LessonLog
-Student (n) ──── (1) Parent
-Student (1) ──── (1) StudentCard
-Student (1) ──── (n) AcademicRecord
-Student (1) ──── (n) ReportCard
-Student (1) ──── (n) ScoreDetail
-Subject (1) ──── (n) ReportCard
-Subject (1) ──── (n) ScoreDetail
-Account (1) ──── (1) Employee / Student / Parent
-Account (n) ──── (n) Role  [qua bảng account_role]
+POST /api/subjects
+        ↓
+SubjectIplmService.save(request)
+  - Tạo Subject entity mới
+  - Tìm School theo schoolId → gán vào subject
+  - Lưu subject xuống DB (có id)
+  - Duyệt qua employeeIds → gán subject cho từng employee
+  - Reload subject với JOIN FETCH
+        ↓
+Trả về SubjectDTO (có danh sách teachers)
+```
+
+### Flow Save Employee
+```
+POST /api/employees
+        ↓
+EmployeeIplmService.save(request)
+  - Tạo Employee entity mới
+  - Tìm School theo schoolId → gán vào employee
+  - Tìm Subject theo subjectId → gán vào employee
+  - Lưu employee xuống DB
+  - Reload employee với JOIN FETCH
+        ↓
+Trả về EmployeeDTO (có thông tin school, subject, homeroomClasses)
+```
+
+### Flow ReportCard
+```
+ReportCard được tạo tự động khi tạo Student
+  - Tạo 1 ReportCard cho mỗi môn học
+  - score = null (chưa có điểm)
+
+Cập nhật điểm:
+PUT /api/report-cards/{id}
+  - Chỉ cập nhật field score
+
+Xem bảng điểm theo học sinh:
+GET /api/report-cards/student/{studentId}
+```
+
+### Flow ScoreDetail (Phiếu điểm)
+```
+POST /api/score-details
+        ↓
+ScoreDetailIplmService.save(request)
+  - Tìm Student theo studentId
+  - Tìm Subject theo subjectId
+  - Tạo ScoreDetail với schoolYear, semester, examDate, examType, score
+  - Lưu xuống DB
+  - Tự động tính điểm TB → cập nhật ReportCard.score
+        ↓
+Trả về ScoreDetailDTO
+
+Xem phiếu điểm theo học sinh và kỳ:
+GET /api/score-details/student/{studentId}/semester?schoolYear=2024-2025&semester=HK1
+```
+
+### Flow LessonLog (Sổ đầu bài)
+```
+LessonLog KHÔNG tự động tạo khi tạo lớp
+Giáo viên tạo mới sau mỗi buổi dạy
+
+POST /api/lesson-logs
+        ↓
+LessonLogIplmService.save(request)
+  - Tìm ClassEntity theo classId
+  - Tìm Employee theo teacherId
+  - Tìm Subject theo subjectId (optional)
+  - Tạo LessonLog với teachingDate, period, content
+  - Lưu xuống DB
+        ↓
+Trả về LessonLogDTO
+
+Xem sổ đầu bài của 1 lớp:
+GET /api/lesson-logs/class/{classId}
+```
+
+### Flow AcademicRecord (Sổ học bạ)
+```
+POST /api/academic-records
+        ↓
+AcademicReportIplmService.save(request)
+  - Tìm Student theo studentId
+  - Tự động tính điểm TB từ ReportCard của học sinh trong kỳ
+  - Tạo AcademicRecord với schoolYear, semester, averageScore (tự tính),
+    conduct, teacherComment, parentComment
+  - Lưu xuống DB
+        ↓
+Trả về AcademicRecordDTO
+
+Xem sổ học bạ theo học sinh:
+GET /api/academic-records/student/{studentId}
+
+Tìm theo năm học và kỳ:
+GET /api/academic-records/search?schoolYear=2024-2025&semester=HK1
 ```
 
 ---
@@ -226,7 +323,7 @@ Account (n) ──── (n) Role  [qua bảng account_role]
 |--------|-----|-----------|
 | GET | `/api/students` | Lấy danh sách học sinh |
 | GET | `/api/students/{id}` | Lấy học sinh theo id |
-| POST | `/api/students` | Thêm học sinh mới |
+| POST | `/api/students` | Thêm học sinh mới + tự động tạo ReportCard |
 | PUT | `/api/students/{id}` | Cập nhật học sinh |
 | DELETE | `/api/students/{id}` | Xóa học sinh |
 
@@ -237,7 +334,69 @@ Account (n) ──── (n) Role  [qua bảng account_role]
 | GET | `/api/parents/{id}` | Lấy phụ huynh theo id |
 | POST | `/api/parents` | Thêm phụ huynh mới |
 | PUT | `/api/parents/{id}` | Cập nhật phụ huynh |
-| DELETE | `/api/parents/{id}` | Xóa phụ huynh |
+| DELETE | `/api/parents/{id}` | Xóa phụ huynh (student không bị xóa) |
+
+### Employee - Quản lý nhân viên
+| Method | URL | Chức năng |
+|--------|-----|-----------|
+| GET | `/api/employees` | Lấy danh sách nhân viên |
+| GET | `/api/employees/{id}` | Lấy nhân viên theo id |
+| POST | `/api/employees` | Thêm nhân viên mới |
+| PUT | `/api/employees/{id}` | Cập nhật nhân viên |
+| DELETE | `/api/employees/{id}` | Xóa nhân viên |
+
+### Subject - Quản lý môn học
+| Method | URL | Chức năng |
+|--------|-----|-----------|
+| GET | `/api/subjects` | Lấy danh sách môn học |
+| GET | `/api/subjects/{id}` | Lấy môn học theo id |
+| GET | `/api/subjects/search?name=Toán` | Tìm môn học theo tên |
+| POST | `/api/subjects` | Thêm môn học mới |
+| PUT | `/api/subjects/{id}` | Cập nhật môn học |
+| DELETE | `/api/subjects/{id}` | Xóa môn học |
+
+### ReportCard - Quản lý bảng điểm tổng kết
+| Method | URL | Chức năng |
+|--------|-----|-----------|
+| GET | `/api/report-cards` | Lấy tất cả bảng điểm |
+| GET | `/api/report-cards/{id}` | Lấy bảng điểm theo id |
+| GET | `/api/report-cards/student/{studentId}` | Lấy bảng điểm theo học sinh |
+| GET | `/api/report-cards/search?studentName=...` | Tìm bảng điểm theo tên học sinh |
+| PUT | `/api/report-cards/{id}` | Cập nhật điểm |
+| DELETE | `/api/report-cards/{id}` | Xóa bảng điểm |
+
+### ScoreDetail - Quản lý phiếu điểm
+| Method | URL | Chức năng |
+|--------|-----|-----------|
+| GET | `/api/score-details` | Lấy tất cả phiếu điểm |
+| GET | `/api/score-details/{id}` | Lấy phiếu điểm theo id |
+| GET | `/api/score-details/student/{studentId}` | Lấy phiếu điểm theo học sinh |
+| GET | `/api/score-details/student/{studentId}/semester?schoolYear=...&semester=...` | Lấy phiếu điểm theo học sinh và kỳ |
+| POST | `/api/score-details` | Thêm phiếu điểm mới |
+| PUT | `/api/score-details/{id}` | Cập nhật phiếu điểm |
+| DELETE | `/api/score-details/{id}` | Xóa phiếu điểm |
+
+### LessonLog - Quản lý sổ đầu bài
+| Method | URL | Chức năng |
+|--------|-----|-----------|
+| GET | `/api/lesson-logs` | Lấy tất cả sổ đầu bài |
+| GET | `/api/lesson-logs/{id}` | Lấy sổ đầu bài theo id |
+| GET | `/api/lesson-logs/class/{classId}` | Xem sổ đầu bài của 1 lớp |
+| POST | `/api/lesson-logs` | Giáo viên ghi sổ sau buổi dạy |
+| PUT | `/api/lesson-logs/{id}` | Cập nhật bản ghi |
+| DELETE | `/api/lesson-logs/{id}` | Xóa bản ghi |
+
+### AcademicRecord - Quản lý sổ học bạ
+| Method | URL | Chức năng |
+|--------|-----|-----------|
+| GET | `/api/academic-records` | Lấy tất cả sổ học bạ |
+| GET | `/api/academic-records/{id}` | Lấy sổ học bạ theo id |
+| GET | `/api/academic-records/student/{studentId}` | Lấy sổ học bạ theo học sinh |
+| GET | `/api/academic-records/search/student-name?name=...` | Tìm theo tên học sinh |
+| GET | `/api/academic-records/search?schoolYear=...&semester=...` | Tìm theo năm học và kỳ |
+| POST | `/api/academic-records` | Thêm sổ học bạ mới |
+| PUT | `/api/academic-records/{id}` | Cập nhật sổ học bạ |
+| DELETE | `/api/academic-records/{id}` | Xóa sổ học bạ |
 
 ---
 
@@ -262,7 +421,9 @@ Account (n) ──── (n) Role  [qua bảng account_role]
     "gender": true,
     "address": "Hanoi",
     "parentId": 1,
-    "classId": 1
+    "classId": 1,
+    "schoolYear": "2024-2025",
+    "semester": "HK1"
 }
 ```
 
@@ -278,6 +439,73 @@ Account (n) ──── (n) Role  [qua bảng account_role]
 }
 ```
 
+### Thêm nhân viên
+```json
+{
+    "fullName": "Nguyen Van C",
+    "dateOfBirth": "1985-05-10",
+    "gender": true,
+    "phone": "0901234567",
+    "email": "teacher@gmail.com",
+    "position": "Giáo viên",
+    "schoolId": 1,
+    "subjectId": 1
+}
+```
+
+### Thêm môn học
+```json
+{
+    "name": "Toán",
+    "schoolId": 1,
+    "employeeIds": [1, 2]
+}
+```
+
+### Thêm phiếu điểm
+```json
+{
+    "studentId": 1,
+    "subjectId": 1,
+    "schoolYear": "2024-2025",
+    "semester": "HK1",
+    "examDate": "2024-10-15",
+    "examType": "Kiểm tra 15 phút",
+    "score": 9.0
+}
+```
+
+### Ghi sổ đầu bài
+```json
+{
+    "classId": 1,
+    "teacherId": 1,
+    "subjectId": 1,
+    "teachingDate": "2024-10-15",
+    "period": 1,
+    "content": "Hàm số bậc nhất"
+}
+```
+
+### Thêm sổ học bạ
+```json
+{
+    "studentId": 1,
+    "schoolYear": "2024-2025",
+    "semester": "HK1",
+    "conduct": "Tốt",
+    "teacherComment": "Học sinh chăm chỉ, tiến bộ rõ rệt",
+    "parentComment": "Gia đình sẽ tiếp tục hỗ trợ con"
+}
+```
+
+### Cập nhật điểm bảng điểm
+```json
+{
+    "score": 8.5
+}
+```
+
 ---
 
 ## Xử Lý Ngoại Lệ
@@ -289,6 +517,46 @@ Account (n) ──── (n) Role  [qua bảng account_role]
 
 ---
 
+## Lưu Ý Quan Trọng
+
+### N+1 Problem
+Tất cả repository đều dùng `JOIN FETCH` thay vì `findAll()` mặc định để tránh N+1:
+```java
+@Query("SELECT DISTINCT s FROM Student s " +
+       "LEFT JOIN FETCH s.classEntity c " +
+       "LEFT JOIN FETCH c.school " +
+       "LEFT JOIN FETCH s.parent")
+List<Student> findAllWithDetails();
+```
+
+### Cascade
+- `School` xóa → `ClassEntity`, `Employee`, `Subject` bị xóa theo
+- `ClassEntity` xóa → `Student` bị xóa theo
+- `Parent` xóa → `Student` **không bị xóa**, chỉ set `parent_id = null`
+- `Subject` xóa → `Employee.subject_id` set null trước khi xóa
+
+### ReportCard
+- Tự động tạo khi tạo Student (1 ReportCard cho mỗi môn học)
+- Điểm TB tự động cập nhật khi thêm/sửa/xóa ScoreDetail
+- Không tạo thủ công qua API POST
+
+### ScoreDetail
+- Thêm phiếu điểm → tự động tính TB → cập nhật ReportCard
+- Có thể lọc theo học sinh + kỳ học
+
+### LessonLog
+- Không tự động tạo khi tạo lớp
+- Giáo viên tạo mới sau mỗi buổi dạy
+- Mỗi bản ghi = 1 buổi học (ngày, tiết, môn, nội dung)
+
+### AcademicRecord
+- Ghi lại kết quả học tập tổng hợp của học sinh theo kỳ
+- `averageScore` tự động tính từ `ReportCard` của học sinh trong kỳ đó
+- Bao gồm: điểm TB (tự tính), hạnh kiểm, nhận xét giáo viên, nhận xét phụ huynh
+- Tạo thủ công qua API POST (không cần nhập averageScore)
+
+---
+
 ## Cấu Hình
 
 ### application.properties
@@ -296,6 +564,7 @@ Account (n) ──── (n) Role  [qua bảng account_role]
 spring.datasource.url=jdbc:mysql://localhost:3306/student
 spring.datasource.username=root
 spring.jpa.hibernate.ddl-auto=update
+spring.jpa.open-in-view=false
 server.port=8888
 ```
 

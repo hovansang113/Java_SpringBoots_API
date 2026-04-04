@@ -25,10 +25,15 @@ public class ScoreDetail {
     @JoinColumn(name = "student_id", nullable = false)
     private Student student;
 
-    // Dùng quan hệ JPA thay vì raw subjectId
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subject_id", nullable = false)
     private Subject subject;
+
+    @Column(name = "school_year", length = 20)
+    private String schoolYear;
+
+    @Column(name = "semester", length = 20)
+    private String semester;
 
     @Column(name = "exam_date")
     private LocalDate examDate;
@@ -42,59 +47,38 @@ public class ScoreDetail {
     public ScoreDetail() {
     }
 
-    public ScoreDetail(Student student, Subject subject, LocalDate examDate, String examType, Float score) {
+    public ScoreDetail(Student student, Subject subject, String schoolYear, String semester,
+            LocalDate examDate, String examType, Float score) {
         this.student = student;
         this.subject = subject;
+        this.schoolYear = schoolYear;
+        this.semester = semester;
         this.examDate = examDate;
         this.examType = examType;
         this.score = score;
     }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public Student getStudent() { return student; }
+    public void setStudent(Student student) { this.student = student; }
 
-    public Student getStudent() {
-        return student;
-    }
+    public Subject getSubject() { return subject; }
+    public void setSubject(Subject subject) { this.subject = subject; }
 
-    public void setStudent(Student student) {
-        this.student = student;
-    }
+    public String getSchoolYear() { return schoolYear; }
+    public void setSchoolYear(String schoolYear) { this.schoolYear = schoolYear; }
 
-    public Subject getSubject() {
-        return subject;
-    }
+    public String getSemester() { return semester; }
+    public void setSemester(String semester) { this.semester = semester; }
 
-    public void setSubject(Subject subject) {
-        this.subject = subject;
-    }
+    public LocalDate getExamDate() { return examDate; }
+    public void setExamDate(LocalDate examDate) { this.examDate = examDate; }
 
-    public LocalDate getExamDate() {
-        return examDate;
-    }
+    public String getExamType() { return examType; }
+    public void setExamType(String examType) { this.examType = examType; }
 
-    public void setExamDate(LocalDate examDate) {
-        this.examDate = examDate;
-    }
-
-    public String getExamType() {
-        return examType;
-    }
-
-    public void setExamType(String examType) {
-        this.examType = examType;
-    }
-
-    public Float getScore() {
-        return score;
-    }
-
-    public void setScore(Float score) {
-        this.score = score;
-    }
+    public Float getScore() { return score; }
+    public void setScore(Float score) { this.score = score; }
 }
