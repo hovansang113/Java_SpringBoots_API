@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+## md
+.JWT_GUIDE.md
+.ENTITY_RELATIONSHIP.md

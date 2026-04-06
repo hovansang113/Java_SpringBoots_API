@@ -585,3 +585,202 @@ mvn spring-boot:run
 ```
 
 4. Truy cập API tại: `http://localhost:8888`
+
+---
+
+## Xác Thực và Phân Quyền (JWT)
+
+### Các File JWT
+
+| File | Package | Chức năng |
+|------|---------|-----------|
+| `JwtUtil.java` | security | Tạo và validate JWT token |
+| `JwtFilter.java` | security | Filter kiểm tra token mỗi request |
+| `UserDetailsServiceImpl.java` | security | Load user từ DB |
+| `SecurityConfig.java` | config | Cấu hình Spring Security + JWT |
+| `AuthRequest.java` | dto/request | Nhận username/password từ client |
+| `AuthResponse.java` | dto/response | Trả token về cho client |
+| `AuthController.java` | controller | API đăng nhập |
+| `AccountRepository.java` | repository | Truy vấn tài khoản từ DB |
+
+---
+
+### Giải Thích Từng File
+
+#### 1. `JwtUtil.java`
+Chịu trách nhiệm tạo và kiểm tra JWT token.
+
+- `generateToken(username)` → Tạo token chứa username, thời gian tạo, thời gian hết hạn, ký bằng secret key
+- `extractUsername(token)` → Giải mã token lấy username
+- `isTokenValid(token)` → Kiểm tra token có hợp lệ không (chưa hết hạn, chữ ký đúng)
+
+```java
+// Token được tạo với thông tin:
+// - Subject: username
+// - IssuedAt: thời gian tạo
+// - Expiration: thời gian hết hạn (86400000ms = 24h)
+// - SignWith: HS256 + secret key
+```
+
+#### 2. `UserDetailsServiceImpl.java`
+Load thông tin user từ DB để Spring Security xác thực.
+
+- `loadUserByUsername(username)` → Tìm `Account` theo username trong DB, lấy danh sách `Role` → trả về `UserDetails` cho Spring Security
+
+```java
+// Flow:
+// username → AccountRepository.findByUsername()
+//          → JOIN FETCH account_role → role
+//          → map role thành GrantedAuthority (ROLE_ADMIN, ROLE_TEACHER,...)
+```
+
+#### 3. `JwtFilter.java`
+Filter chạy trước mỗi request để kiểm tra token.
+
+- `doFilterInternal()` → Đọc header `Authorization: Bearer <token>` → validate token → set Authentication vào SecurityContext
+
+```java
+// Flow mỗi request:
+// Header: Authorization: Bearer eyJhbGc...
+//         ↓
+// Tách lấy token (bỏ "Bearer ")
+//         ↓
+// isTokenValid() → true
+//         ↓
+// extractUsername() → lấy username
+//         ↓
+// loadUserByUsername() → lấy UserDetails
+//         ↓
+// Set Authentication vào SecurityContextHolder
+//         ↓
+// Cho phép request đi tiếp
+```
+
+#### 4. `SecurityConfig.java`
+Cấu hình Spring Security.
+
+- `filterChain()` → Tắt CSRF, dùng Stateless session, cho phép `/api/auth/**` không cần token, các API khác cần token, thêm `JwtFilter` vào trước `UsernamePasswordAuthenticationFilter`
+- `authenticationManager()` → Bean để xác thực username/password
+- `passwordEncoder()` → Bean BCrypt để mã hóa password
+
+#### 5. `AuthController.java`
+API đăng nhập duy nhất.
+
+- `POST /api/auth/login` → Nhận username/password → xác thực → tạo token → trả về
+
+#### 6. `AccountRepository.java`
+- `findByUsername()` → Query JOIN FETCH lấy account kèm roles từ 3 bảng `account`, `account_role`, `role`
+
+---
+
+### Vai Trò Trong Hệ Thống
+
+| Vai trò | Mô tả | Quyền hạn |
+|---------|-------|-----------|
+| `ROLE_ADMIN` | Quản trị viên | Toàn quyền CRUD tất cả |
+| `ROLE_TEACHER` | Giáo viên | Ghi sổ đầu bài, nhập điểm, xem học sinh |
+| `ROLE_PARENT` | Phụ huynh | Xem thông tin con, điểm, học bạ |
+| `ROLE_STUDENT` | Học sinh | Xem thông tin cá nhân, điểm |
+
+---
+
+### Flow Đăng Nhập
+```
+POST /api/auth/login
+{ "username": "admin", "password": "123456" }
+        ↓
+AuthController.login()
+        ↓
+AuthenticationManager.authenticate()
+  - UserDetailsServiceImpl.loadUserByUsername()
+  - Tìm Account trong DB → JOIN FETCH roles
+  - So sánh password với BCrypt
+        ↓
+Xác thực thành công
+        ↓
+JwtUtil.generateToken(username)
+  - Tạo token chứa username + hết hạn 24h
+        ↓
+Trả về AuthResponse
+{
+    "status": 200,
+    "message": "Success",
+    "data": {
+        "token": "eyJhbGciOiJIUzI1NiJ9...",
+        "username": "admin",
+        "role": "ROLE_ADMIN"
+    }
+}
+```
+
+### Flow Gọi API Sau Khi Đăng Nhập
+```
+Client gửi request kèm token
+Header: Authorization: Bearer eyJhbGc...
+        ↓
+JwtFilter.doFilterInternal()
+  - Đọc token từ header
+  - isTokenValid() → kiểm tra token hợp lệ
+  - extractUsername() → lấy username từ token
+  - loadUserByUsername() → lấy UserDetails + roles
+  - Set Authentication vào SecurityContext
+        ↓
+Request đi tiếp vào Controller
+        ↓
+Trả về response
+```
+
+### Flow Token Không Hợp Lệ
+```
+Client gửi request với token sai/hết hạn
+        ↓
+JwtFilter → isTokenValid() → false
+        ↓
+Không set Authentication
+        ↓
+Spring Security → 401 Unauthorized
+```
+
+---
+
+### Dữ Liệu Mẫu DB
+
+```sql
+-- Thêm roles
+INSERT INTO role (name) VALUES ('ROLE_ADMIN');
+INSERT INTO role (name) VALUES ('ROLE_TEACHER');
+INSERT INTO role (name) VALUES ('ROLE_PARENT');
+INSERT INTO role (name) VALUES ('ROLE_STUDENT');
+
+-- Thêm account (password = BCrypt của "123456")
+INSERT INTO account (username, password, status)
+VALUES ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBpsl7iKVYDE6i', true);
+
+-- Gán role cho account
+INSERT INTO account_role (account_id, role_id) VALUES (1, 1);
+```
+
+### Test Đăng Nhập
+```
+POST http://localhost:8888/api/auth/login
+Content-Type: application/json
+
+{
+    "username": "admin",
+    "password": "123456"
+}
+```
+
+### Dùng Token Gọi API
+```
+GET http://localhost:8888/api/students
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+```
+
+---
+
+### Cấu Hình JWT trong application.properties
+```properties
+jwt.secret=5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
+jwt.expiration=86400000
+```
