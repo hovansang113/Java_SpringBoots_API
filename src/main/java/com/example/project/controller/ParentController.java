@@ -4,6 +4,7 @@ import com.example.project.dto.request.ParentRequest;
 import com.example.project.dto.response.ApiResponse;
 import com.example.project.dto.response.ParentDTO;
 import com.example.project.service.ParentService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -37,13 +38,14 @@ public class ParentController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<ParentDTO>> save(@RequestBody ParentRequest request) {
+    public ResponseEntity<ApiResponse<ParentDTO>> save(@Valid @RequestBody ParentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(parentService.save(request)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<ParentDTO>> updateById(@PathVariable Long id, @RequestBody ParentRequest request) {
+    public ResponseEntity<ApiResponse<ParentDTO>> updateById(@PathVariable Long id,
+            @Valid @RequestBody ParentRequest request) {
         return ResponseEntity.ok(ApiResponse.success(parentService.updateById(id, request)));
     }
 

@@ -1,15 +1,28 @@
 package com.example.project.dto.request;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
 import java.time.LocalDate;
 
 public class StudentRequest {
 
+    @NotBlank(message = "Họ tên không được để trống")
     private String fullName;
+
+    @NotNull(message = "Ngày sinh không được để trống")
+    @Past(message = "Ngày sinh phải là ngày trong quá khứ")
     private LocalDate dateOfBirth;
+
+    @NotNull(message = "Giới tính không được để trống")
     private Boolean gender;
+
     private String address;
     private Long parentId;
+
+    @NotNull(message = "Lớp học không được để trống")
     private Long classId;
+
     private String schoolYear;
     private String semester;
 

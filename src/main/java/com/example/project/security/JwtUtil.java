@@ -5,6 +5,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
@@ -18,10 +19,9 @@ public class JwtUtil {
     private Long expiration;
 
     private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    // create token for user with username as subject and set expiration time
     public String generateToken(String username) {
         return Jwts.builder()
                 .setSubject(username)
@@ -31,7 +31,6 @@ public class JwtUtil {
                 .compact();
     }
 
-    // decoding token to get username
     public String extractUsername(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
@@ -41,7 +40,6 @@ public class JwtUtil {
                 .getSubject();
     }
 
-    // verify token validity by checking signature and expiration
     public boolean isTokenValid(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token);

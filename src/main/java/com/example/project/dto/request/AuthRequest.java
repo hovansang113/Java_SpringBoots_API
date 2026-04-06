@@ -1,7 +1,13 @@
 package com.example.project.dto.request;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class AuthRequest {
+
+    @NotBlank(message = "Username không được để trống")
     private String username;
+
+    @NotBlank(message = "Password không được để trống")
     private String password;
 
     public String getUsername() { return username; }

@@ -4,6 +4,7 @@ import com.example.project.dto.request.ScoreDetailRequest;
 import com.example.project.dto.response.ApiResponse;
 import com.example.project.dto.response.ScoreDetailDTO;
 import com.example.project.service.ScoreDetailService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -52,14 +53,14 @@ public class ScoreDetailController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<ScoreDetailDTO>> save(@RequestBody ScoreDetailRequest request) {
+    public ResponseEntity<ApiResponse<ScoreDetailDTO>> save(@Valid @RequestBody ScoreDetailRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(scoreDetailService.save(request)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ScoreDetailDTO>> updateById(@PathVariable Long id,
-            @RequestBody ScoreDetailRequest request) {
+            @Valid @RequestBody ScoreDetailRequest request) {
         return ResponseEntity.ok(ApiResponse.success(scoreDetailService.updateById(id, request)));
     }
 

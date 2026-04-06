@@ -4,6 +4,7 @@ import com.example.project.dto.request.StudentRequest;
 import com.example.project.dto.response.ApiResponse;
 import com.example.project.dto.response.StudentDTO;
 import com.example.project.service.StudentService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -37,13 +38,14 @@ public class StudentController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<StudentDTO>> save(@RequestBody StudentRequest request) {
+    public ResponseEntity<ApiResponse<StudentDTO>> save(@Valid @RequestBody StudentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(studentService.save(request)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<StudentDTO>> updateById(@PathVariable Long id, @RequestBody StudentRequest request) {
+    public ResponseEntity<ApiResponse<StudentDTO>> updateById(@PathVariable Long id,
+            @Valid @RequestBody StudentRequest request) {
         return ResponseEntity.ok(ApiResponse.success(studentService.updateById(id, request)));
     }
 

@@ -1,21 +1,36 @@
 package com.example.project.dto.request;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Pattern;
 import java.time.LocalDate;
 
 public class EmployeeRequest {
 
+    @NotBlank(message = "Họ tên không được để trống")
     private String fullName;
-    private LocalDate dateOfBirth;
-    private Boolean gender;
-    private String phone;
-    private String email;
-    private String position;
-    private Long classId;
-    private Long schoolId;
-    private Long subjectId;
 
-    public Long getClassId() { return classId; }
-    public void setClassId(Long classId) { this.classId = classId; }
+    @NotNull(message = "Ngày sinh không được để trống")
+    @Past(message = "Ngày sinh phải là ngày trong quá khứ")
+    private LocalDate dateOfBirth;
+
+    @NotNull(message = "Giới tính không được để trống")
+    private Boolean gender;
+
+    @Pattern(regexp = "^[0-9]{10,11}$", message = "Số điện thoại không hợp lệ")
+    private String phone;
+
+    @Email(message = "Email không hợp lệ")
+    private String email;
+
+    private String position;
+
+    @NotNull(message = "Trường học không được để trống")
+    private Long schoolId;
+
+    private Long subjectId;
 
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }

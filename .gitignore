@@ -1,4 +1,6 @@
 HELP.md
+JWT_GUIDE.md
+ENTITY_RELATIONSHIPS.md
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -32,6 +34,4 @@ build/
 ### VS Code ###
 .vscode/
 
-## md
-.JWT_GUIDE.md
-.ENTITY_RELATIONSHIP.md
+

@@ -1,15 +1,32 @@
 package com.example.project.dto.request;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 
 public class ScoreDetailRequest {
 
+    @NotNull(message = "Học sinh không được để trống")
     private Long studentId;
+
+    @NotNull(message = "Môn học không được để trống")
     private Long subjectId;
+
+    @NotBlank(message = "Năm học không được để trống")
     private String schoolYear;
+
+    @NotBlank(message = "Học kỳ không được để trống")
     private String semester;
+
     private LocalDate examDate;
+
     private String examType;
+
+    @NotNull(message = "Điểm không được để trống")
+    @DecimalMin(value = "0.0", message = "Điểm không được nhỏ hơn 0")
+    @DecimalMax(value = "10.0", message = "Điểm không được lớn hơn 10")
     private Float score;
 
     public Long getStudentId() { return studentId; }

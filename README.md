@@ -555,6 +555,17 @@ List<Student> findAllWithDetails();
 - Bao gồm: điểm TB (tự tính), hạnh kiểm, nhận xét giáo viên, nhận xét phụ huynh
 - Tạo thủ công qua API POST (không cần nhập averageScore)
 
+### Validation
+- Tất cả Request DTO đều có `@Valid` annotation
+- Lỗi validation trả về HTTP 400 với message cụ thể
+- Các field bắt buộc: `@NotBlank`, `@NotNull`, `@Past`, `@Email`, `@Pattern`
+- Điểm số: `@DecimalMin(0.0)` và `@DecimalMax(10.0)`
+
+### Bảo Mật
+- Password mã hóa BCrypt
+- `SecureRandom` để sinh mã thẻ học sinh
+- JWT secret key dùng `StandardCharsets.UTF_8`
+
 ---
 
 ## Cấu Hình

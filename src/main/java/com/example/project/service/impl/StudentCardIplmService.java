@@ -11,6 +11,7 @@ import com.example.project.service.StudentCardService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,6 +20,7 @@ public class StudentCardIplmService implements StudentCardService {
 
     private final StudentCardRepository studentCardRepository;
     private final StudentRepository studentRepository;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     public StudentCardIplmService(StudentCardRepository studentCardRepository,
                                    StudentRepository studentRepository) {
@@ -57,7 +59,6 @@ public class StudentCardIplmService implements StudentCardService {
         Student student = studentRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy học sinh id: " + request.getStudentId()));
 
-        // Kiểm tra học sinh đã có thẻ chưa
         studentCardRepository.findByStudentId(request.getStudentId()).ifPresent(sc -> {
             throw new RuntimeException("Học sinh id: " + request.getStudentId() + " đã có thẻ học sinh");
         });
@@ -74,10 +75,11 @@ public class StudentCardIplmService implements StudentCardService {
                 .orElseThrow(() -> new ResourceNotFoundException("Lỗi khi load thẻ học sinh sau khi save"));
     }
 
+    // Dùng SecureRandom thay vì Math.random() để đảm bảo an toàn
     private String generateCardCode() {
         String cardCode;
         do {
-            cardCode = String.format("%08d", (int)(Math.random() * 100000000));
+            cardCode = String.format("%08d", secureRandom.nextInt(100000000));
         } while (studentCardRepository.findByCardCode(cardCode).isPresent());
         return cardCode;
     }
